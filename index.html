@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galactic Command - 4X Strategy</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- MAIN MENU OVERLAY -->
+        <div id="main-menu" class="main-menu-overlay">
+            <div class="menu-content">
+                <h1 class="menu-title">GALACTIC COMMAND</h1>
+                <p class="menu-subtitle">4X Sci-Fi Empire Builder</p>
+                
+                <div class="menu-buttons">
+                    <button id="menu-start-btn" class="menu-btn primary">🚀 Start New Game</button>
+                    <button id="menu-tutorial-btn" class="menu-btn">📖 How to Play</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tutorial Modal -->
+        <div id="tutorial-modal" class="gameover-modal hidden" style="z-index: 20;">
+            <div class="tutorial-box">
+                <h2>Commander's Briefing</h2>
+                <ul class="tutorial-list">
+                    <li><strong>Objective:</strong> Expand your empire, manage planetary biomes, and eliminate the Crimson Syndicate.</li>
+                    <li><strong>Economy:</strong> Build districts on planets to generate Energy, Minerals, Alloys, Food, and Research.</li>
+                    <li><strong>Exploration:</strong> Pan the map with drag/WASD. Scan ✨ Anomalies for bonuses and manage Fog of War.</li>
+                    <li><strong>Defense:</strong> Upgrade 🛡️ Starbases on chokepoint worlds to shield them against enemy fleets.</li>
+                </ul>
+                <button id="tutorial-close-btn" class="restart-btn" style="margin-top: 14px;">Got It, Let's Play</button>
+            </div>
+        </div>
+
+        <!-- Top Empire HUD -->
+        <header class="top-bar">
+            <div class="logo">GALACTIC COMMAND <span class="badge">v0.7 Main Menu</span></div>
+            
+            <div class="resources">
+                <div class="res-item">⚡ Energy: <strong id="energy-val">0</strong> <span class="income" id="energy-inc">(+0)</span></div>
+                <div class="res-item">⛏️ Minerals: <strong id="minerals-val">0</strong> <span class="income" id="minerals-inc">(+0)</span></div>
+                <div class="res-item">🔩 Alloys: <strong id="alloys-val">0</strong> <span class="income" id="alloys-inc">(+0)</span></div>
+                <div class="res-item">🌾 Food: <strong id="food-val">0</strong> <span class="income" id="food-inc">(+0)</span></div>
+                <div class="res-item">🔬 Research: <strong id="research-val">0</strong> <span class="income" id="research-inc">(+0)</span></div>
+            </div>
+
+            <div class="turn-controls">
+                <span class="turn-counter">Turn <strong id="turn-val">1</strong></span>
+                <button id="end-turn-btn">End Turn ⏭</button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="main-area">
+            <div class="canvas-container">
+                <canvas id="galaxyCanvas" width="760" height="560"></canvas>
+                <div class="map-overlay-hint">Drag / WASD: Pan | Left-Click: Select | Right-Click: Jump Fleet | ✨ = Anomaly | 🛡️ = Starbase</div>
+                
+                <!-- Victory / Defeat Overlay Banner -->
+                <div id="gameover-modal" class="gameover-modal hidden">
+                    <h1 id="gameover-title">GALACTIC VICTORY</h1>
+                    <p id="gameover-desc">You have united the sector under your banner!</p>
+                    <button onclick="location.reload()" class="restart-btn">Main Menu 🔄</button>
+                </div>
+            </div>
+
+            <!-- Right Command Sidebar -->
+            <aside class="sidebar">
+                <div class="tab-bar">
+                    <button id="tab-planet-btn" class="tab-btn active">🪐 System</button>
+                    <button id="tab-tech-btn" class="tab-btn">🔬 Tech (<span id="tech-count">0/10</span>)</button>
+                    <button id="tab-diplo-btn" class="tab-btn">🤝 Diplo</button>
+                </div>
+
+                <!-- TAB 1: PLANET & FLEET INSPECTOR -->
+                <div id="planet-tab-view" class="tab-view">
+                    <div class="sidebar-header">
+                        <div class="header-row">
+                            <h2 id="sys-name">Select a System</h2>
+                            <span id="sys-biome" class="biome-tag">Terran</span>
+                        </div>
+                        <p id="sys-owner" class="subtitle">Click any star on the map</p>
+                    </div>
+
+                    <div id="sys-details" class="sidebar-content hidden">
+                        <div id="sys-specialty" class="specialty-box">Specialty info</div>
+
+                        <div class="stat-box">
+                            <div class="stat-row"><span>Pop / Max Districts:</span> <strong id="sys-slots">0 / 0</strong></div>
+                            <div class="stat-row"><span>Starbase Bastion:</span> <strong id="sys-starbase">Lvl 0 (0🛡️)</strong></div>
+                            <div class="stat-row"><span>Stationed Fleet:</span> <strong id="sys-fleet">0 Ships</strong></div>
+                            <div class="stat-row"><span>Fleet Readiness:</span> <strong id="sys-ready">Ready</strong></div>
+                            <div class="stat-row"><span>System Net Yield:</span> <strong id="sys-econ">--</strong></div>
+                        </div>
+
+                        <!-- Fleet Split Controls -->
+                        <div id="fleet-split-box" class="split-box hidden">
+                            <div class="split-header">
+                                <span>Fleet Jump Split:</span>
+                                <strong id="split-label">100% (All Ships)</strong>
+                            </div>
+                            <div class="split-buttons">
+                                <button class="split-btn" data-ratio="0.25">25%</button>
+                                <button class="split-btn" data-ratio="0.5">50%</button>
+                                <button class="split-btn" data-ratio="0.75">75%</button>
+                                <button class="split-btn active" data-ratio="1">100%</button>
+                            </div>
+                        </div>
+
+                        <div id="player-actions" class="action-group hidden">
+                            <h3>Planetary Districts</h3>
+                            <button id="build-gen-btn" class="action-btn">
+                                <span>⚡ Generator <small id="yield-gen">(+8⚡)</small> <small id="count-gen">[0]</small></span>
+                                <span class="cost">50 ⛏️</span>
+                            </button>
+                            <button id="build-mine-btn" class="action-btn">
+                                <span>⛏️ Mining <small id="yield-mine">(+8⛏️)</small> <small id="count-mine">[0]</small></span>
+                                <span class="cost">50 ⛏️</span>
+                            </button>
+                            <button id="build-farm-btn" class="action-btn">
+                                <span>🌾 Agriculture <small id="yield-farm">(+6🌾)</small> <small id="count-farm">[0]</small></span>
+                                <span class="cost">40 ⛏️</span>
+                            </button>
+                            <button id="build-foundry-btn" class="action-btn">
+                                <span>🏭 Foundry <small id="yield-foundry">(+5🔩)</small> <small id="count-foundry">[0]</small></span>
+                                <span class="cost">75 ⛏️</span>
+                            </button>
+                            <button id="build-lab-btn" class="action-btn">
+                                <span>🔬 Research Lab <small id="yield-lab">(+6🔬)</small> <small id="count-lab">[0]</small></span>
+                                <span class="cost">60 ⛏️</span>
+                            </button>
+
+                            <h3 style="margin-top: 4px;">Orbital Defenses & Shipyard</h3>
+                            <button id="build-starbase-btn" class="action-btn bastion-btn">
+                                <span>🛡️ Upgrade Starbase <small id="starbase-bonus">(+6🛡️ / -1⚡)</small></span>
+                                <span class="cost" id="starbase-cost">40 🔩</span>
+                            </button>
+                            <button id="build-corvette-btn" class="action-btn ship-btn">
+                                <span>🚀 Build Corvette <small>(1⚔️ / -1⚡)</small></span>
+                                <span class="cost" id="corvette-cost">30 🔩</span>
+                            </button>
+                            <button id="build-destroyer-btn" class="action-btn ship-btn" disabled>
+                                <span>🛸 Build Destroyer <small>(3⚔️ / -2⚡)</small></span>
+                                <span class="cost" id="destroyer-cost">🔒 Tech</span>
+                            </button>
+                            <button id="build-cruiser-btn" class="action-btn ship-btn" disabled>
+                                <span>🛰️ Build Cruiser <small>(8⚔️ / -4⚡)</small></span>
+                                <span class="cost" id="cruiser-cost">🔒 Tech</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: RESEARCH TREE -->
+                <div id="tech-tab-view" class="tab-view hidden">
+                    <div class="sidebar-header">
+                        <h2>Empire Technologies</h2>
+                        <p class="subtitle">Unlock military hulls, starbases & economy buffs</p>
+                    </div>
+                    <div id="tech-list" class="sidebar-content"></div>
+                </div>
+
+                <!-- TAB 3: DIPLOMACY & EMPIRE OVERVIEW -->
+                <div id="diplo-tab-view" class="tab-view hidden">
+                    <div class="sidebar-header">
+                        <h2>Galactic Diplomacy</h2>
+                        <p class="subtitle">Relations with the Crimson Syndicate (AI)</p>
+                    </div>
+                    <div class="sidebar-content">
+                        <div class="stat-box">
+                            <div class="stat-row"><span>Faction:</span> <strong style="color:#f43f5e;">Crimson Syndicate</strong></div>
+                            <div class="stat-row"><span>Current Posture:</span> <strong id="ai-posture">Consolidating Economy</strong></div>
+                            <div class="stat-row"><span>Diplomatic Opinion:</span> <strong id="ai-opinion">0 (Neutral)</strong></div>
+                            <div class="stat-row"><span>Active Truce:</span> <strong id="ai-truce">None</strong></div>
+                        </div>
+
+                        <div class="stat-box">
+                            <div class="stat-row"><span>Your Worlds:</span> <strong id="player-worlds">1</strong></div>
+                            <div class="stat-row"><span>Crimson Worlds:</span> <strong id="ai-worlds">2</strong></div>
+                            <div class="stat-row"><span>Neutral Worlds:</span> <strong id="neutral-worlds">21</strong></div>
+                        </div>
+
+                        <div class="action-group">
+                            <h3>Diplomatic Channels</h3>
+                            <button id="diplo-gift-btn" class="action-btn">
+                                <span>🎁 Send Trade Envoy <small>(+30 Opinion)</small></span>
+                                <span class="cost">60 ⚡</span>
+                            </button>
+                            <button id="diplo-pact-btn" class="action-btn">
+                                <span>🕊️ Non-Aggression Pact <small>(8 Turns, Req +20 Op)</small></span>
+                                <span class="cost">80 ⚡</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fixed Event Log -->
+                <div class="log-container">
+                    <h3>Galactic Comms Log</h3>
+                    <ul id="game-log"></ul>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Modular JS Architecture -->
+    <script src="js/data.js"></script>
+    <script src="js/mapGen.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
